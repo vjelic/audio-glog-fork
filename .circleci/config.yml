@@ -299,6 +299,21 @@ jobs:
             conda install -yq anaconda-client
             set -x
             anaconda -t "${CONDA_PYTORCHBOT_TOKEN}" upload ~/workspace/conda-bld/*/*.tar.bz2 -u "pytorch-${UPLOAD_CHANNEL}" --label main --no-progress --force
+  
+  # Requires org-member context
+  binary_conda_rocm_upload:
+    docker:
+      - image: continuumio/miniconda
+    steps:
+      - attach_workspace:
+          at: ~/workspace
+      - designate_upload_channel
+      - run:
+          command: |
+            # Prevent credential from leaking
+            conda install -yq anaconda-client
+            set -x
+            anaconda -t "${CONDA_PYTORCHBOT_TOKEN}" upload ~/workspace/conda-bld/*/*.tar.bz2 -u "pytorch-${UPLOAD_CHANNEL}" --label main --no-progress --force
 
   # Requires org-member context
   binary_wheel_upload:
@@ -361,8 +376,47 @@ jobs:
           command: |
             source /usr/local/etc/profile.d/conda.sh && conda activate python${PYTHON_VERSION}
             python -c "import torchaudio"
+  
+  smoke_test_linux_rocm_conda:
+    <<: *smoke_test_common
+    steps:
+      - attach_workspace:
+          at: ~/workspace
+      - designate_upload_channel
+      - load_conda_channel_flags
+      - run:
+          name: install binaries
+          command: |
+            set -x
+            source /usr/local/etc/profile.d/conda.sh && conda activate python${PYTHON_VERSION}
+            conda install -v -y -c pytorch-${UPLOAD_CHANNEL} pytorch cpuonly
+            conda install -v -y -c file://$HOME/workspace/conda-bld torchaudio
+      - run:
+          name: smoke test
+          command: |
+            source /usr/local/etc/profile.d/conda.sh && conda activate python${PYTHON_VERSION}
+            python -c "import torchaudio"
 
   smoke_test_linux_pip:
+    <<: *smoke_test_common
+    steps:
+      - attach_workspace:
+          at: ~/workspace
+      - designate_upload_channel
+      - load_conda_channel_flags
+      - run:
+          name: install binaries
+          command: |
+            set -x
+            source /usr/local/etc/profile.d/conda.sh && conda activate python${PYTHON_VERSION}
+            pip install $(ls ~/workspace/torchaudio*.whl) -f "https://download.pytorch.org/whl/${UPLOAD_CHANNEL}/torch_${UPLOAD_CHANNEL}.html"
+      - run:
+          name: smoke test
+          command: |
+            source /usr/local/etc/profile.d/conda.sh && conda activate python${PYTHON_VERSION}
+            python -c "import torchaudio"
+  
+  smoke_test_linux_rocm_pip:
     <<: *smoke_test_common
     steps:
       - attach_workspace:
@@ -1367,7 +1421,7 @@ workflows:
           name: nightly_binary_linux_conda_py3.6_upload
           requires:
           - nightly_binary_linux_conda_py3.6
-       - binary_conda_rocm_upload:
+      - binary_conda_rocm_upload:
           context: org-member
           filters:
             branches:
