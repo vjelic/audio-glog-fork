@@ -141,42 +141,7 @@ jobs:
           paths:
             - "*"
 
-  binary_linux_rocm_wheel:
-    <<: *binary_common
-    docker:
-      - image: "pytorch/manylinux-rocm:4.0.1"
-    resource_class: 2xlarge+
-    steps:
-      - checkout
-      - attach_workspace:
-          at: third_party
-      - run: packaging/build_wheel.sh
-      - store_artifacts:
-          path: dist
-      - persist_to_workspace:
-          root: dist
-          paths:
-            - "*"
-
   binary_linux_conda:
-    <<: *binary_common
-    docker:
-      - image: "pytorch/conda-cuda"
-    resource_class: 2xlarge+
-    steps:
-      - checkout
-      - load_conda_channel_flags
-      - attach_workspace:
-          at: third_party
-      - run: packaging/build_conda.sh
-      - store_artifacts:
-          path: /opt/conda/conda-bld/linux-64
-      - persist_to_workspace:
-          root: /opt/conda
-          paths:
-            - "conda-bld/*"
-
-  binary_linux_rocm_conda:
     <<: *binary_common
     docker:
       - image: "pytorch/conda-cuda"
@@ -299,44 +264,9 @@ jobs:
             conda install -yq anaconda-client
             set -x
             anaconda -t "${CONDA_PYTORCHBOT_TOKEN}" upload ~/workspace/conda-bld/*/*.tar.bz2 -u "pytorch-${UPLOAD_CHANNEL}" --label main --no-progress --force
-  
-  # Requires org-member context
-  binary_conda_rocm_upload:
-    docker:
-      - image: continuumio/miniconda
-    steps:
-      - attach_workspace:
-          at: ~/workspace
-      - designate_upload_channel
-      - run:
-          command: |
-            # Prevent credential from leaking
-            conda install -yq anaconda-client
-            set -x
-            anaconda -t "${CONDA_PYTORCHBOT_TOKEN}" upload ~/workspace/conda-bld/*/*.tar.bz2 -u "pytorch-${UPLOAD_CHANNEL}" --label main --no-progress --force
 
   # Requires org-member context
   binary_wheel_upload:
-    docker:
-      - image: circleci/python:3.8
-    steps:
-      - attach_workspace:
-          at: ~/workspace
-      - checkout
-      - designate_upload_channel
-      - run:
-          command: |
-            pip install --user awscli
-            export PATH="$HOME/.local/bin:$PATH"
-            # Prevent credential from leaking
-            set +x
-            export AWS_ACCESS_KEY_ID="${PYTORCH_BINARY_AWS_ACCESS_KEY_ID}"
-            export AWS_SECRET_ACCESS_KEY="${PYTORCH_BINARY_AWS_SECRET_ACCESS_KEY}"
-            set -x
-            for pkg in ~/workspace/*.whl; do
-              aws s3 cp "$pkg" "s3://pytorch/whl/${UPLOAD_CHANNEL}/" --acl public-read
-            done
-  binary_rocm_wheel_upload:
     docker:
       - image: circleci/python:3.8
     steps:
@@ -376,47 +306,8 @@ jobs:
           command: |
             source /usr/local/etc/profile.d/conda.sh && conda activate python${PYTHON_VERSION}
             python -c "import torchaudio"
-  
-  smoke_test_linux_rocm_conda:
-    <<: *smoke_test_common
-    steps:
-      - attach_workspace:
-          at: ~/workspace
-      - designate_upload_channel
-      - load_conda_channel_flags
-      - run:
-          name: install binaries
-          command: |
-            set -x
-            source /usr/local/etc/profile.d/conda.sh && conda activate python${PYTHON_VERSION}
-            conda install -v -y -c pytorch-${UPLOAD_CHANNEL} pytorch cpuonly
-            conda install -v -y -c file://$HOME/workspace/conda-bld torchaudio
-      - run:
-          name: smoke test
-          command: |
-            source /usr/local/etc/profile.d/conda.sh && conda activate python${PYTHON_VERSION}
-            python -c "import torchaudio"
 
   smoke_test_linux_pip:
-    <<: *smoke_test_common
-    steps:
-      - attach_workspace:
-          at: ~/workspace
-      - designate_upload_channel
-      - load_conda_channel_flags
-      - run:
-          name: install binaries
-          command: |
-            set -x
-            source /usr/local/etc/profile.d/conda.sh && conda activate python${PYTHON_VERSION}
-            pip install $(ls ~/workspace/torchaudio*.whl) -f "https://download.pytorch.org/whl/${UPLOAD_CHANNEL}/torch_${UPLOAD_CHANNEL}.html"
-      - run:
-          name: smoke test
-          command: |
-            source /usr/local/etc/profile.d/conda.sh && conda activate python${PYTHON_VERSION}
-            python -c "import torchaudio"
-  
-  smoke_test_linux_rocm_pip:
     <<: *smoke_test_common
     steps:
       - attach_workspace:
@@ -540,38 +431,6 @@ jobs:
           path: test-results
 
   unittest_linux_gpu:
-    <<: *binary_common
-    machine:
-      image: ubuntu-1604-cuda-10.1:201909-23
-    resource_class: gpu.small
-    environment:
-      <<: *environment
-      image_name: pytorch/torchaudio_unittest_base:manylinux-cuda10.1-cudnn7-20210121
-    steps:
-      - checkout
-      - attach_workspace:
-          at: third_party
-      - designate_upload_channel
-      - load_conda_channel_flags
-      - run:
-          name: Pull Docker image
-          command: docker pull --quiet "${image_name}"
-      - run:
-          name: Setup
-          command: docker run -t --gpus all -e PYTHON_VERSION -v $PWD:$PWD -w $PWD "${image_name}" .circleci/unittest/linux/scripts/setup_env.sh
-      - run:
-          name: Install torchaudio
-          command: docker run -t --gpus all -e UPLOAD_CHANNEL -e CONDA_CHANNEL_FLAGS -v $PWD:$PWD -w $PWD "${image_name}" .circleci/unittest/linux/scripts/install.sh
-      - run:
-          name: Run tests
-          command: docker run -t --gpus all -v $PWD:$PWD -w $PWD "${image_name}" .circleci/unittest/linux/scripts/run_test.sh
-      - run:
-          name: Post Process
-          command: docker run -t --gpus all -v $PWD:$PWD -w $PWD "${image_name}" .circleci/unittest/linux/scripts/post_process.sh
-      - store_test_results:
-          path: test-results
-
-  unittest_linux_rocm_gpu:
     <<: *binary_common
     machine:
       image: ubuntu-1604-cuda-10.1:201909-23
@@ -785,11 +644,6 @@ workflows:
           python_version: '3.9'
           requires:
           - download_third_parties_nix
-      - binary_linux_rocm_wheel:
-          name: binary_linux_rocm_wheel_py3.6
-          python_version: '3.6'
-          requires:
-          - download_third_parties_nix
       - binary_macos_wheel:
           name: binary_macos_wheel_py3.6
           python_version: '3.6'
@@ -840,11 +694,6 @@ workflows:
       - binary_linux_conda:
           name: binary_linux_conda_py3.9
           python_version: '3.9'
-          requires:
-          - download_third_parties_nix
-      - binary_linux_rocm_conda:
-          name: binary_linux_rocm_conda_py3.6
-          python_version: '3.6'
           requires:
           - download_third_parties_nix
       - binary_macos_conda:
@@ -948,11 +797,6 @@ workflows:
           python_version: '3.9'
           requires:
           - download_third_parties_nix
-      - unittest_linux_rocm_gpu:
-          name: unittest_linux_rocm_gpu_py3.6
-          python_version: '3.6'
-          requires:
-          - download_third_parties_nix
       - unittest_windows_cpu:
           name: unittest_windows_cpu_py3.6
           python_version: '3.6'
@@ -1022,17 +866,6 @@ workflows:
           python_version: '3.6'
           requires:
           - download_third_parties_nix
-      - binary_linux_rocm_wheel:
-          filters:
-            branches:
-              only:
-              - nightly
-            tags:
-              only: /v[0-9]+(\.[0-9]+)*-rc[0-9]+/
-          name: nightly_binary_linux_rocm_wheel_py3.6
-          python_version: '3.6'
-          requires:
-          - download_third_parties_nix
       - binary_wheel_upload:
           context: org-member
           filters:
@@ -1044,17 +877,6 @@ workflows:
           name: nightly_binary_linux_wheel_py3.6_upload
           requires:
           - nightly_binary_linux_wheel_py3.6
-      - binary_rocm_wheel_upload:
-          context: org-member
-          filters:
-            branches:
-              only:
-              - nightly
-            tags:
-              only: /v[0-9]+(\.[0-9]+)*-rc[0-9]+/
-          name: nightly_binary_linux_rocm_wheel_py3.6_upload
-          requires:
-          - nightly_binary_linux_rocm_wheel_py3.6
       - smoke_test_linux_pip:
           filters:
             branches:
@@ -1066,17 +888,6 @@ workflows:
           python_version: '3.6'
           requires:
           - nightly_binary_linux_wheel_py3.6_upload
-      - smoke_test_linux_rocm_pip:
-          filters:
-            branches:
-              only:
-              - nightly
-            tags:
-              only: /v[0-9]+(\.[0-9]+)*-rc[0-9]+/
-          name: nightly_binary_linux_rocm_wheel_py3.6_smoke_test_pip
-          python_version: '3.6'
-          requires:
-          - nightly_binary_linux_rocm_wheel_py3.6_upload
       - binary_linux_wheel:
           filters:
             branches:
@@ -1399,17 +1210,6 @@ workflows:
           python_version: '3.6'
           requires:
           - download_third_parties_nix
-      - binary_linux_rocm_conda:
-          filters:
-            branches:
-              only:
-              - nightly
-            tags:
-              only: /v[0-9]+(\.[0-9]+)*-rc[0-9]+/
-          name: nightly_binary_linux_rocm_conda_py3.6
-          python_version: '3.6'
-          requires:
-          - download_third_parties_nix
       - binary_conda_upload:
           context: org-member
           filters:
@@ -1421,17 +1221,6 @@ workflows:
           name: nightly_binary_linux_conda_py3.6_upload
           requires:
           - nightly_binary_linux_conda_py3.6
-      - binary_conda_rocm_upload:
-          context: org-member
-          filters:
-            branches:
-              only:
-              - nightly
-            tags:
-              only: /v[0-9]+(\.[0-9]+)*-rc[0-9]+/
-          name: nightly_binary_linux_rocm_conda_py3.6_upload
-          requires:
-          - nightly_binary_linux_rocm_conda_py3.6
       - smoke_test_linux_conda:
           filters:
             branches:
@@ -1443,17 +1232,6 @@ workflows:
           python_version: '3.6'
           requires:
           - nightly_binary_linux_conda_py3.6_upload
-      - smoke_test_linux_rocm_conda:
-          filters:
-            branches:
-              only:
-              - nightly
-            tags:
-              only: /v[0-9]+(\.[0-9]+)*-rc[0-9]+/
-          name: nightly_binary_linux_rocm_conda_py3.6_smoke_test_conda
-          python_version: '3.6'
-          requires:
-          - nightly_binary_linux_rocm_conda_py3.6_upload
       - binary_linux_conda:
           filters:
             branches:
