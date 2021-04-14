@@ -144,7 +144,7 @@ jobs:
   binary_linux_rocm_wheel:
     <<: *binary_common
     docker:
-      - image: "pytorch/manylinux-cuda102"
+      - image: "pytorch/manylinux-rocm:4.0.1"
     resource_class: 2xlarge+
     steps:
       - checkout
