@@ -84,6 +84,14 @@ def spectrogram(
         ``n_fft // 2 + 1`` and ``n_fft`` is the number of
         Fourier bins, and time is the number of window hops (n_frame).
     """
+    if power is None and not return_complex:
+        warnings.warn(
+            "The use of pseudo complex type in spectrogram is now deprecated."
+            "Please migrate to native complex type by providing `return_complex=True`. "
+            "Please refer to https://github.com/pytorch/audio/issues/1337 "
+            "for more details about torchaudio's plan to migrate to native complex type."
+        )
+
     if power is not None and return_complex:
         raise ValueError(
             'When `power` is provided, the return value is real-valued. '
@@ -123,6 +131,16 @@ def spectrogram(
     if not return_complex:
         return torch.view_as_real(spec_f)
     return spec_f
+
+
+def _get_complex_dtype(real_dtype: torch.dtype):
+    if real_dtype == torch.double:
+        return torch.cdouble
+    if real_dtype == torch.float:
+        return torch.cfloat
+    if real_dtype == torch.half:
+        return torch.complex32
+    raise ValueError(f'Unexpected dtype {real_dtype}')
 
 
 def griffinlim(
@@ -180,52 +198,49 @@ def griffinlim(
 
     specgram = specgram.pow(1 / power)
 
-    # randomly initialize the phase
-    batch, freq, frames = specgram.size()
+    # initialize the phase
     if rand_init:
-        angles = 2 * math.pi * torch.rand(batch, freq, frames)
+        angles = torch.rand(
+            specgram.size(),
+            dtype=_get_complex_dtype(specgram.dtype), device=specgram.device)
     else:
-        angles = torch.zeros(batch, freq, frames)
-    angles = torch.stack([angles.cos(), angles.sin()], dim=-1) \
-        .to(dtype=specgram.dtype, device=specgram.device)
-    specgram = specgram.unsqueeze(-1).expand_as(angles)
+        angles = torch.full(
+            specgram.size(), 1,
+            dtype=_get_complex_dtype(specgram.dtype), device=specgram.device)
 
     # And initialize the previous iterate to 0
-    rebuilt = torch.tensor(0.)
-
+    tprev = torch.tensor(0., dtype=specgram.dtype, device=specgram.device)
     for _ in range(n_iter):
-        # Store the previous iterate
-        tprev = rebuilt
-
         # Invert with our current estimate of the phases
         inverse = torch.istft(specgram * angles,
                               n_fft=n_fft,
                               hop_length=hop_length,
                               win_length=win_length,
                               window=window,
-                              length=length).float()
+                              length=length)
 
         # Rebuild the spectrogram
-        rebuilt = torch.view_as_real(
-            torch.stft(
-                input=inverse,
-                n_fft=n_fft,
-                hop_length=hop_length,
-                win_length=win_length,
-                window=window,
-                center=True,
-                pad_mode='reflect',
-                normalized=False,
-                onesided=True,
-                return_complex=True,
-            )
+        rebuilt = torch.stft(
+            input=inverse,
+            n_fft=n_fft,
+            hop_length=hop_length,
+            win_length=win_length,
+            window=window,
+            center=True,
+            pad_mode='reflect',
+            normalized=False,
+            onesided=True,
+            return_complex=True,
         )
 
         # Update our phase estimates
         angles = rebuilt
         if momentum:
             angles = angles - tprev.mul_(momentum / (1 + momentum))
-        angles = angles.div(complex_norm(angles).add(1e-16).unsqueeze(-1).expand_as(angles))
+        angles = angles.div(angles.abs().add(1e-16))
+
+        # Store the previous iterate
+        tprev = rebuilt
 
     # Return the final phase estimates
     waveform = torch.istft(specgram * angles,
@@ -518,6 +533,12 @@ def mu_law_decoding(
     return x
 
 
+@_mod_utils.deprecated(
+    "Please convert the input Tensor to complex type with `torch.view_as_complex` then "
+    "use `torch.abs`. "
+    "Please refer to https://github.com/pytorch/audio/issues/1337 "
+    "for more details about torchaudio's plan to migrate to native complex type."
+)
 def complex_norm(
         complex_tensor: Tensor,
         power: float = 1.0
@@ -537,6 +558,12 @@ def complex_norm(
     return complex_tensor.pow(2.).sum(-1).pow(0.5 * power)
 
 
+@_mod_utils.deprecated(
+    "Please convert the input Tensor to complex type with `torch.view_as_complex` then "
+    "use `torch.angle`. "
+    "Please refer to https://github.com/pytorch/audio/issues/1337 "
+    "for more details about torchaudio's plan to migrate to native complex type."
+)
 def angle(
         complex_tensor: Tensor
 ) -> Tensor:
@@ -614,10 +641,19 @@ def phase_vocoder(
     if rate == 1.0:
         return complex_specgrams
 
-    if not complex_specgrams.is_complex() and complex_specgrams.size(-1) != 2:
-        raise ValueError(
-            "complex_specgrams must be either native complex tensors or "
-            "real valued tensors with shape (..., 2)")
+    if not complex_specgrams.is_complex():
+        warnings.warn(
+            "The use of pseudo complex type in `torchaudio.functional.phase_vocoder` and "
+            "`torchaudio.transforms.TimeStretch` is now deprecated."
+            "Please migrate to native complex type by converting the input tensor with "
+            "`torch.view_as_complex`. "
+            "Please refer to https://github.com/pytorch/audio/issues/1337 "
+            "for more details about torchaudio's plan to migrate to native complex type."
+        )
+        if complex_specgrams.size(-1) != 2:
+            raise ValueError(
+                "complex_specgrams must be either native complex tensors or "
+                "real valued tensors with shape (..., 2)")
 
     is_complex = complex_specgrams.is_complex()
 
@@ -793,7 +829,7 @@ def compute_deltas(
 
     # pack batch
     shape = specgram.size()
-    specgram = specgram.reshape(-1, 1, shape[-1])
+    specgram = specgram.reshape(1, -1, shape[-1])
 
     assert win_length >= 3
 
@@ -804,9 +840,9 @@ def compute_deltas(
 
     specgram = torch.nn.functional.pad(specgram, (n, n), mode=mode)
 
-    kernel = torch.arange(-n, n + 1, 1, device=device, dtype=dtype).view(1, 1, -1)
+    kernel = torch.arange(-n, n + 1, 1, device=device, dtype=dtype).repeat(specgram.shape[1], 1, 1)
 
-    output = torch.nn.functional.conv1d(specgram, kernel) / denom
+    output = torch.nn.functional.conv1d(specgram, kernel, groups=specgram.shape[1]) / denom
 
     # unpack batch
     output = output.reshape(shape)
