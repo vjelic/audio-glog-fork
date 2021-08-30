@@ -55,13 +55,20 @@ option(BUILD_TORCHAUDIO_PYTHON_EXTENSION "Build Python extension" OFF)
 option(USE_CUDA "Enable CUDA support" OFF)
 option(USE_ROCM "Enable ROCM support" OFF)
 
+# check that USE_CUDA and USE_ROCM are not set at the same time
+if(USE_CUDA AND USE_ROCM)
+  message(FATAL "CUDA and ROCm are mutually exclusive")
+endif()
+
 if(USE_ROCM) 
   # Find the HIP package, set the HIP paths, load the HIP CMake.
   include(cmake/LoadHIP.cmake)
   if(NOT PYTORCH_FOUND_HIP)
     set(USE_ROCM OFF)
   endif()
-elseif(USE_CUDA)
+endif()
+
+if(USE_CUDA)
   enable_language(CUDA)
 endif()
 
