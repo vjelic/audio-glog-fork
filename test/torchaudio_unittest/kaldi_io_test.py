@@ -2,7 +2,7 @@ import torch
 import torchaudio.kaldi_io as kio
 
 from torchaudio_unittest import common_utils
-from common_utils import (
+from torchaudio_unittest.common_utils import (
     skipIfRocm
 )
 
