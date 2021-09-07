@@ -16,7 +16,7 @@ class TestFunctionalFloat32(Functional, FunctionalCPUOnly, PytorchTestCase):
     def test_lfilter_9th_order_filter_stability(self):
         super().test_lfilter_9th_order_filter_stability()
 
-
+@skipIfRocm
 class TestFunctionalFloat64(Functional, PytorchTestCase):
     dtype = torch.float64
     device = torch.device('cpu')
