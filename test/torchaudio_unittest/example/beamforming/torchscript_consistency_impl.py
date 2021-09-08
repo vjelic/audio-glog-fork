@@ -8,6 +8,7 @@ from torchaudio_unittest import common_utils
 from torchaudio_unittest.common_utils import (
     TempDirMixin,
     TestBaseMixin,
+    skipIfRocm
 )
 
 
@@ -47,6 +48,7 @@ class TransformsFloat64Only(TestBaseMixin):
         param(solution="stv_evd", online=False),
         param(solution="stv_power", online=False),
     ])
+    @skipIfRocm
     def test_MVDR(self, solution, online):
         tensor = common_utils.get_whitenoise(sample_rate=8000, n_channels=4)
         spectrogram = common_utils.get_spectrogram(tensor, n_fft=400, hop_length=100)

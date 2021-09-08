@@ -9,6 +9,7 @@ from torchaudio_unittest.common_utils import (
     TestBaseMixin,
     get_whitenoise,
     get_spectrogram,
+    skipIfRocm,
 )
 
 
@@ -62,6 +63,7 @@ class AutogradTestMixin(TestBaseMixin):
         # evd will fail since the eigenvalues are not distinct
         # param(solution="stv_evd"),
     ])
+    @skipIfRocm
     def test_mvdr(self, solution):
         transform = MVDR(solution=solution)
         waveform = get_whitenoise(sample_rate=8000, duration=0.05, n_channels=2)
