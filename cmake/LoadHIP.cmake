@@ -13,9 +13,9 @@ else()
   set(HIP_PATH $ENV{HIP_PATH})
 endif()
 
-if(NOT EXISTS ${HIP_PATH})
-  return()
-endif()
+# if(NOT EXISTS ${HIP_PATH})
+#   return()
+# endif()
 
 # HCC_PATH
 if(NOT DEFINED ENV{HCC_PATH})
