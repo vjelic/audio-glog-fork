@@ -129,7 +129,7 @@ else()
 endif()
 
 # Add HIP to the CMAKE Module Path
-set(CMAKE_MODULE_PATH ${HIP_PATH}/cmake ${CMAKE_MODULE_PATH})
+set(CMAKE_MODULE_PATH ${ROCM_PATH}/lib/cmake/hip ${CMAKE_MODULE_PATH})
 
 # Disable Asserts In Code (Can't use asserts on HIP stack.)
 add_definitions(-DNDEBUG)
