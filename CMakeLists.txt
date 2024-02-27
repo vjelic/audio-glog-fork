@@ -74,7 +74,7 @@ if(USE_ROCM)
   # Find the HIP package, set the HIP paths, load the HIP CMake.
   include(cmake/LoadHIP.cmake)
   if(NOT PYTORCH_FOUND_HIP)
-    set(USE_ROCM OFF)
+    message (FATAL_ERROR "HIP NOT Found")
   endif()
 
   if(CMAKE_VERSION VERSION_LESS 3.21.0)
