@@ -1,0 +1,263 @@
+{
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "Glog.AI",
+          "organization": "Glog.AI",
+          "fullName": "Glog, Making software more secure",
+          "version": "1.0.0",
+          "semanticVersion": "1.0.0",
+          "informationUri": "https://www.glog.ai",
+          "rules": [
+            {
+              "id": "glog-27e2fbbe-fcce-4cbc-a126-f5471df55826",
+              "help": {
+                "text": "",
+                "markdown": "## Description\n\nThe `memcpy` function in C++ is used to copy a block of memory from one location to another. This function does not check for the size of the destination buffer, which can lead to buffer overflow if the source data is larger than the destination buffer. This is a common vulnerability in C++ programming that can lead to serious security issues such as data corruption, system crash, or even arbitrary code execution.\n\n## Mitigation Advice\n\nTo mitigate this vulnerability, it is recommended to always ensure that the destination buffer is large enough to hold the source data. This can be done by checking the size of the source data and the size of the destination buffer before calling the `memcpy` function. If the source data is larger than the destination buffer, you should not proceed with the copy operation.\n\n## Source Code Fix Recommendation\n\nHere is a recommended fix for the specific vulnerability sink:\n\n```cpp\nif (chunk_len <= sizeof(buffer)) {\n    memcpy(buffer, chunk.data(), chunk_len);\n} else {\n    // Handle error\n}\n```\n\nIn this code, we first check if the size of the source data (`chunk_len`) is less than or equal to the size of the destination buffer (`sizeof(buffer)`). If it is, we proceed with the copy operation. Otherwise, we handle the error in an appropriate manner.\n\n## Library Dependencies\n\nThe `memcpy` function is part of the C standard library, so no additional library dependencies are required for the code example to execute properly.\n\n## OWASP Resources\n\n- [Buffer Overflow](https://owasp.org/www-community/vulnerabilities/Buffer_Overflow)\n\n## Common Weakness Enumeration (CWE)\n\n- [CWE-120: Buffer Copy without Checking Size of Input ('Classic Buffer Overflow')](https://cwe.mitre.org/data/definitions/120.html)\n- [CWE-119: Improper Restriction of Operations within the Bounds of a Memory Buffer](https://cwe.mitre.org/data/definitions/119.html)"
+              },
+              "properties": {
+                "tags": [
+                  "DS121708"
+                ]
+              }
+            },
+            {
+              "id": "glog-d796f551-5b0c-4d3b-a405-f57b7502745b",
+              "help": {
+                "text": "",
+                "markdown": "## Description\n\nThe `memcpy` function in C++ is used to copy a block of memory from a source address to a destination address. This function can lead to vulnerabilities if not used properly. The vulnerability arises when the size of the source buffer and the size of the destination buffer are not checked to be the same. This can lead to buffer overflow attacks where an attacker can overwrite the destination buffer with more data than it can handle, potentially leading to arbitrary code execution.\n\n## Mitigation Advice\n\nTo mitigate this vulnerability, always ensure that the destination buffer is large enough to hold the data being copied from the source buffer. This can be done by checking the size of the buffers before calling `memcpy`. Also, consider using safer functions such as `strncpy` or `memcpy_s` which include the size of the destination buffer as a parameter.\n\n## Source Code Fix Recommendation\n\nHere is a simple fix for the vulnerability:\n\n```cpp\n#include <cstring>\n\nvoid safe_memcpy(void *dst, size_t dst_size, const void *src, size_t num_refill) {\n    if (dst_size < num_refill) {\n        // Handle the error, e.g.:\n        throw std::length_error(\"Destination buffer is too small\");\n    }\n    memcpy(dst, src, num_refill);\n}\n```\n\n## Library Dependencies\n\nThe `memcpy` function is part of the C Standard Library, so you need to include the `<cstring>` header file.\n\n## References\n\n- [OWASP C++ Secure Coding Practices](https://cheatsheetseries.owasp.org/cheatsheets/C-Based_Toolchain_Hardening_Cheat_Sheet.html)\n- [CWE-120: Buffer Copy without Checking Size of Input ('Classic Buffer Overflow')](https://cwe.mitre.org/data/definitions/120.html)\n\nPlease note that the links provided are accessible to anonymous users at the time of writing this report."
+              },
+              "properties": {
+                "tags": [
+                  "DS121708"
+                ]
+              }
+            },
+            {
+              "id": "glog-db927aab-7a22-449a-8ea0-29d1a2800ef9",
+              "help": {
+                "text": "",
+                "markdown": "## Description\n\nThe `memcpy` function in C++ is used to copy a block of memory from one location to another. This function does not check the size of the destination buffer, which can lead to buffer overflow if the source data is larger than the destination buffer. This is a common vulnerability in C++ programming that can lead to serious security issues such as data corruption, system crash, or even arbitrary code execution.\n\nIn the provided code snippet, the `memcpy` function is used to copy data from `chunk.data_ptr<int32_t>()` to `obuf` with a size of `*osamp * 4`. If the size of `obuf` is less than `*osamp * 4`, it will cause a buffer overflow.\n\n## Mitigation Advice\n\nTo mitigate this vulnerability, you should always ensure that the destination buffer is large enough to hold the source data. This can be done by checking the size of the destination buffer before calling the `memcpy` function. If the destination buffer is not large enough, you should resize it or limit the amount of data copied to prevent buffer overflow.\n\n## Source Code Fix Recommendation\n\nHere is a recommended fix for the provided code snippet:\n\n```cpp\nsize_t size = *osamp * 4;\nif (sizeof(obuf) >= size) {\n    memcpy(obuf, chunk.data_ptr<int32_t>(), size);\n} else {\n    // Handle error: destination buffer is not large enough\n}\n```\n\nIn this fix, we first calculate the size of the data to be copied and then check if the destination buffer is large enough. If the destination buffer is not large enough, we handle the error appropriately.\n\n## Library Dependencies\n\nThe provided code snippet does not indicate any specific library dependencies. However, the `memcpy` function is part of the C standard library, so the code will need to include the `<cstring>` header file.\n\n## OWASP and CWE Links\n\n- [OWASP C++ Secure Coding Practices](https://cheatsheetseries.owasp.org/cheatsheets/C-Based_Toolchain_Hardening_Cheat_Sheet.html)\n- [CWE-120: Buffer Copy without Checking Size of Input ('Classic Buffer Overflow')](https://cwe.mitre.org/data/definitions/120.html)\n\nPlease note that these links are subject to change and may not be accessible at all times."
+              },
+              "properties": {
+                "tags": [
+                  "DS121708"
+                ]
+              }
+            }
+          ],
+          "language": "en-US",
+          "contents": [
+            "localizedData",
+            "nonLocalizedData"
+          ],
+          "isComprehensive": false
+        }
+      },
+      "language": "en-US",
+      "results": [
+        {
+          "ruleId": "glog-27e2fbbe-fcce-4cbc-a126-f5471df55826",
+          "kind": "fail",
+          "level": "note",
+          "message": {
+            "text": "Detected Vulnerability in C Function (memcpy)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "torchaudio/csrc/sox/utils.cpp"
+                },
+                "region": {
+                  "startLine": 516,
+                  "startColumn": 4,
+                  "endLine": 516,
+                  "endColumn": 43,
+                  "charOffset": 17126,
+                  "charLength": 39,
+                  "snippet": {
+                    "text": "memcpy(buffer, chunk.data(), chunk_len)",
+                    "rendered": {
+                      "text": "memcpy(buffer, chunk.data(), chunk_len)",
+                      "markdown": "`memcpy(buffer, chunk.data(), chunk_len)`"
+                    }
+                  },
+                  "sourceLanguage": "cpp"
+                }
+              }
+            }
+          ],
+          "fixes": [
+            {
+              "description": {
+                "text": "There are a number of conditions in which memcpy can introduce a vulnerability (mismatched buffer sizes, null pointers, etc.). More secure alternitives perform additional validation of the source and destination buffer"
+              },
+              "artifactChanges": [
+                {
+                  "artifactLocation": {
+                    "uri": "torchaudio/csrc/sox/utils.cpp"
+                  },
+                  "replacements": [
+                    {
+                      "deletedRegion": {
+                        "charOffset": 17126,
+                        "charLength": 39
+                      },
+                      "insertedContent": {
+                        "text": "memcpy_s(buffer, <size of buffer>,  chunk.data(),  chunk_len)"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "DevSkimSeverity": "BestPractice",
+            "DevSkimConfidence": "High",
+            "tags": [
+              "API.DangerousAPI.ProblematicFunction"
+            ]
+          }
+        },
+        {
+          "ruleId": "glog-d796f551-5b0c-4d3b-a405-f57b7502745b",
+          "kind": "fail",
+          "level": "note",
+          "message": {
+            "text": "Detected Vulnerability in C Function (memcpy)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "torchaudio/csrc/sox/effects_chain.cpp"
+                },
+                "region": {
+                  "startLine": 417,
+                  "startColumn": 4,
+                  "endLine": 417,
+                  "endColumn": 32,
+                  "charOffset": 12566,
+                  "charLength": 28,
+                  "snippet": {
+                    "text": "memcpy(dst, src, num_refill)",
+                    "rendered": {
+                      "text": "memcpy(dst, src, num_refill)",
+                      "markdown": "`memcpy(dst, src, num_refill)`"
+                    }
+                  },
+                  "sourceLanguage": "cpp"
+                }
+              }
+            }
+          ],
+          "fixes": [
+            {
+              "description": {
+                "text": "There are a number of conditions in which memcpy can introduce a vulnerability (mismatched buffer sizes, null pointers, etc.). More secure alternitives perform additional validation of the source and destination buffer"
+              },
+              "artifactChanges": [
+                {
+                  "artifactLocation": {
+                    "uri": "torchaudio/csrc/sox/effects_chain.cpp"
+                  },
+                  "replacements": [
+                    {
+                      "deletedRegion": {
+                        "charOffset": 12566,
+                        "charLength": 28
+                      },
+                      "insertedContent": {
+                        "text": "memcpy_s(dst, <size of dst>,  src,  num_refill)"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "DevSkimSeverity": "BestPractice",
+            "DevSkimConfidence": "High",
+            "tags": [
+              "API.DangerousAPI.ProblematicFunction"
+            ]
+          }
+        },
+        {
+          "ruleId": "glog-db927aab-7a22-449a-8ea0-29d1a2800ef9",
+          "kind": "fail",
+          "level": "note",
+          "message": {
+            "text": "Detected Vulnerability in C Function (memcpy)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "torchaudio/csrc/sox/effects_chain.cpp"
+                },
+                "region": {
+                  "startLine": 111,
+                  "startColumn": 2,
+                  "endLine": 111,
+                  "endColumn": 53,
+                  "charOffset": 3276,
+                  "charLength": 51,
+                  "snippet": {
+                    "text": "memcpy(obuf, chunk.data_ptr<int32_t>(), *osamp * 4)",
+                    "rendered": {
+                      "text": "memcpy(obuf, chunk.data_ptr<int32_t>(), *osamp * 4)",
+                      "markdown": "`memcpy(obuf, chunk.data_ptr<int32_t>(), *osamp * 4)`"
+                    }
+                  },
+                  "sourceLanguage": "cpp"
+                }
+              }
+            }
+          ],
+          "fixes": [
+            {
+              "description": {
+                "text": "There are a number of conditions in which memcpy can introduce a vulnerability (mismatched buffer sizes, null pointers, etc.). More secure alternitives perform additional validation of the source and destination buffer"
+              },
+              "artifactChanges": [
+                {
+                  "artifactLocation": {
+                    "uri": "torchaudio/csrc/sox/effects_chain.cpp"
+                  },
+                  "replacements": [
+                    {
+                      "deletedRegion": {
+                        "charOffset": 3276,
+                        "charLength": 51
+                      },
+                      "insertedContent": {
+                        "text": "memcpy_s(obuf, <size of obuf>,  chunk.data_ptr<int32_t>(),  *osamp * 4)"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "DevSkimSeverity": "BestPractice",
+            "DevSkimConfidence": "High",
+            "tags": [
+              "API.DangerousAPI.ProblematicFunction"
+            ]
+          }
+        }
+      ],
+      "newlineSequences": [
+        "\r\n",
+        "\n"
+      ]
+    }
+  ]
+}
